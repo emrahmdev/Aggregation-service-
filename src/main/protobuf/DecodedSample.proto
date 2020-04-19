@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+message VehicleSignals {
+    string vehicleId = 1;
+    google.protobuf.Timestamp recordedAt = 2;
+    map<string, double> signalValues = 3;
+}

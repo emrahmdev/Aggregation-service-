@@ -1,0 +1,5 @@
+[info] Compiling 1 protobuf files to F:\repo\rimac\target\scala-2.13\src_managed\main
+[debug] protoc options:
+[info] Compiling schema F:\repo\rimac\src\main\protobuf\DecodedSample.proto
+[info] Compiling protobuf
+[info] Protoc target directory: F:\repo\rimac\target\scala-2.13\src_managed\main
