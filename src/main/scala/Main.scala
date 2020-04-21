@@ -20,7 +20,7 @@ import scala.concurrent.ExecutionContext
 object Main extends App {
   final val log = LoggerFactory.getLogger(getClass)
 
-  private val kakfaServer = "192.168.12.100:9092"
+  private val kafkaServer = "127.0.0.1:9092"
   private val topic = "vehicle-signals"
   private val groupId = "0"
 
@@ -28,19 +28,19 @@ object Main extends App {
   implicit val executionContext: ExecutionContext = actorSystem.executionContext
 
   // #kafka-setup
-  val kafkaConsumerSettings = ConsumerSettings(actorSystem.toClassic, new StringDeserializer, new ProtobuffDeserializer)
-    .withBootstrapServers(kakfaServer)
+  val kafkaConsumerSettings = ConsumerSettings(actorSystem.toClassic, new StringDeserializer, new ProtobufDeserializer)
+    .withBootstrapServers(kafkaServer)
     .withGroupId(groupId)
-    .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+    .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
     .withStopTimeout(0.seconds)
   // #kafka-setup
 
   // #cassandra-setup
   val sessionSettings = CassandraSessionSettings()
   implicit val cassandraSession: CassandraSession = CassandraSessionRegistry.get(actorSystem).sessionFor(sessionSettings)
-  // #cassandra-setup
 
   CassandraBootstrap.create()
+  // #cassandra-setup
 
   object AggregateData {
     var maxSpeed: Double = 0
@@ -48,7 +48,7 @@ object Main extends App {
     var lastMessageTimestamp: Long = 0
     var isCharging = false
 
-    def proccess(signal: VehicleSignals):Option[AggregationResult] = {
+    def process(signal: VehicleSignals):Option[AggregationResult] = {
 
       if(lastMessageTimestamp > signal.recordedAt.get.seconds) return None
 
@@ -80,16 +80,15 @@ object Main extends App {
         aggregationResult.lastMessageTimestamp
       )
     CassandraFlow.create(CassandraWriteSettings.defaults,
-      s"INSERT INTO aggregationApp.results(vehicle_id, average_speed, max_speed, number_of_charges, last_messaget_timestamp) VALUES (?, ?, ?, ?, ?)",
+      s"INSERT INTO aggregationApp.results(vehicle_id, average_speed, max_speed, number_of_charges, last_message_timestamp) VALUES (?, ?, ?, ?, ?)",
       statementBinder)
   }
 
-  Consumer.plainSource(kafkaConsumerSettings, Subscriptions.topics(topic))
+  Consumer
+    .plainSource(kafkaConsumerSettings, Subscriptions.topics(topic))
     .map { vehicleSignalsRecord => vehicleSignalsRecord.value()}
-    .map(AggregateData.proccess)
-    .collect {
-      case Some(x) => x
-    }
+    .map(AggregateData.process)
+    .collect { case Some(x) => x }
     .via(cassandraFlow)
     .runWith(Sink.foreach(r => {
       log.info("vehicleId: {}", r.vehicleId)

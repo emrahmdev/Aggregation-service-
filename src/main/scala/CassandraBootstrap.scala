@@ -24,7 +24,7 @@ object CassandraBootstrap {
         |  average_speed DOUBLE,
         |  max_speed DOUBLE,
         |  number_of_charges INT,
-        |  last_messaget_timestamp BIGINT,
+        |  last_message_timestamp BIGINT,
         |
         |  PRIMARY KEY(vehicle_id)
         |);
